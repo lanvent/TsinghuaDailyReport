@@ -133,12 +133,16 @@ class Report(object):
         headers_["Host"] = "thos.tsinghua.edu.cn"
         cookies_ = self.session.cookies
 
-        response = requests.get(url=url_, headers=headers, cookies=cookies_)
-        soup = BeautifulSoup(response.text, 'html.parser')
+        try:
+            response = requests.get(url=url_, headers=headers, cookies=cookies_)
 
-        form_data_str = soup.find("script", attrs={"id": "dcstr"}).extract().text
-
-        self.form_data = eval(form_data_str, type('js', (dict,), dict(__getitem__=lambda k, n: n))())
+            soup = BeautifulSoup(response.text, 'html.parser')
+            form_data_str = soup.find("script", attrs={"id": "dcstr"}).extract().string
+            self.form_data = eval(form_data_str, type('js', (dict,), dict(__getitem__=lambda k, n: n))())
+            print("获取表单成功")
+        except Exception as e:
+            print("获取表单失败", e)
+            raise RuntimeError("Get form failed")
 
     def __submit_report(self):
         url_ = "https://thos.tsinghua.edu.cn/fp/formParser?" \
