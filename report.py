@@ -9,11 +9,11 @@ import os
 headers = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
     'Accept-Encoding': 'gzip, deflate, br',
-    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Accept-Language': 'zh-CN,zh;q=0.9',
     'Cache-Control': 'max-age=0',
     'Connection': 'keep-alive',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
-                            (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) \
+        AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.122 Safari/537.36',
 }
 
 
@@ -42,12 +42,15 @@ class Report(object):
 
         self.form_data = None
 
+        self.ds="d7713892-dc41-4d00-a0db-66ec5a0e"
+
     def run(self):
         try:
             self.__login()
         except Exception as e:
             print("登录失败", e)
         try:
+            self.__check_service()
             self.__get_server_info()
             self.__get_data()
             self.__submit_report()
@@ -83,6 +86,24 @@ class Report(object):
             self.session.headers.update(res3.headers)
             print("登录成功")
 
+    def __check_service(self):
+        url_ = "https://thos.tsinghua.edu.cn/fp/fp/serveapply/checkService"
+
+        headers_ = self.session.headers
+        headers_["Accept"] = "application/json, text/javascript, */*; q=0.01"
+        headers_["Content-Type"] = "application/json;charset=UTF-8"
+        headers_["Referer"] = self.common_referer
+        headers_["Origin"] = "https://thos.tsinghua.edu.cn"
+        headers_["X-Requested-With"] = "XMLHttpRequest"
+        headers_["Host"] = "thos.tsinghua.edu.cn"
+
+        data = {"serveID": self.server_id}
+        try:
+            response = self.session.post(url=url_, data=json.dumps(data))
+            print("检查服务成功",response.text)
+        except Exception as e:
+            print("检查服务失败", e)
+            raise RuntimeError("Get server info failed")
     def __get_server_info(self):
         """
         获取服务器提供的一些参数
@@ -95,7 +116,7 @@ class Report(object):
 
         headers_ = self.session.headers
         headers_["Accept"] = "application/json, text/javascript, */*; q=0.01"
-        headers_["Content-Type"] = "application/json"
+        headers_["Content-Type"] = "application/json;charset=UTF-8"
         headers_["Referer"] = self.common_referer
         headers_["Origin"] = "https://thos.tsinghua.edu.cn"
         headers_["X-Requested-With"] = "XMLHttpRequest"
@@ -139,6 +160,23 @@ class Report(object):
             soup = BeautifulSoup(response.text, 'html.parser')
             form_data_str = soup.find("script", attrs={"id": "dcstr"}).extract().string
             self.form_data = eval(form_data_str, type('js', (dict,), dict(__getitem__=lambda k, n: n))())
+            records=self.form_data["body"]["dataStores"]["variable"]["rowSet"]["primary"]
+            newdict=dict()
+            recordDict=dict()
+            for r in records:
+                recordDict[r['name']]=r['value']
+                if r['name'].startswith("5503059824640."):
+                    name=r['name'].split('.')[1]
+                    newdict[name]=r['value']
+                    if len(r['value'])>0 and name!='MQXXDZ':
+                        newdict[name+"_TEXT"]=r['value']
+            newdict["XH"]=recordDict["716e67c5-a4ae-4d51-95b8-92c4a9c5.ID_NUMBER"]
+            newdict["_t"]=3
+            newdict["XM"]=recordDict["SYS_USER"]
+            newdict["SZYX"]=recordDict["SYS_UNIT"]
+            newdict["YXDM"]=recordDict["716e67c5-a4ae-4d51-95b8-92c4a9c5.UNIT_ID"]
+            self.form_data["body"]["dataStores"][self.ds]["recordCount"]=1
+            self.form_data["body"]["dataStores"][self.ds]["rowSet"]["primary"].append(newdict)
             print("获取表单成功")
         except Exception as e:
             print("获取表单失败", e)
@@ -169,7 +207,6 @@ class Report(object):
         headers_["Sec-Fetch-Mode"] = "cors"
         headers_["Sec-Fetch-Site"] = "same-origin"
         headers_["Referer"] = referer_url_
-
         response = self.session.post(url_, data=json.dumps(self.form_data), headers=headers_)
         if response.status_code == requests.codes.OK:
             print("提交健康日报成功")
