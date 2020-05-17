@@ -42,7 +42,7 @@ class Report(object):
 
         self.form_data = None
 
-        self.ds="d7713892-dc41-4d00-a0db-66ec5a0e"
+        self.ds="fe494636-d872-4879-9a6d-6e449e1f"
 
     def run(self):
         try:
@@ -156,7 +156,6 @@ class Report(object):
 
         try:
             response = requests.get(url=url_, headers=headers, cookies=cookies_)
-
             soup = BeautifulSoup(response.text, 'html.parser')
             form_data_str = soup.find("script", attrs={"id": "dcstr"}).extract().string
             self.form_data = eval(form_data_str, type('js', (dict,), dict(__getitem__=lambda k, n: n))())
