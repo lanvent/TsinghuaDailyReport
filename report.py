@@ -42,7 +42,7 @@ class Report(object):
 
         self.form_data = None
 
-        self.ds="fe494636-d872-4879-9a6d-6e449e1f"
+        self.ds=""
 
     def run(self):
         try:
@@ -56,6 +56,7 @@ class Report(object):
             self.__submit_report()
         except Exception as e:
             print("提交失败", e)
+            raise RuntimeError(e)
 
     def __login(self):
         """登录 获取cookie"""
@@ -174,6 +175,11 @@ class Report(object):
             newdict["XM"]=recordDict["SYS_USER"]
             newdict["SZYX"]=recordDict["SYS_UNIT"]
             newdict["YXDM"]=recordDict["716e67c5-a4ae-4d51-95b8-92c4a9c5.UNIT_ID"]
+            for k in self.form_data["body"]["dataStores"]:
+                if k!="variable":
+                    self.ds=k
+                    break
+            # print(self.ds)
             self.form_data["body"]["dataStores"][self.ds]["recordCount"]=1
             self.form_data["body"]["dataStores"][self.ds]["rowSet"]["primary"].append(newdict)
             print("获取表单成功")
@@ -211,6 +217,7 @@ class Report(object):
             print("提交健康日报成功")
         else:
             print("提交健康日报失败")
+            raise RuntimeError("Submit failed")
 
 
 def load_info():
